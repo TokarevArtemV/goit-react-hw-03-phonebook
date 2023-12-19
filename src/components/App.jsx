@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { PureComponent } from 'react';
 import { ContactForm } from './ContactForm/ContactForm';
 import { Contacts } from './Contacts/Contacts';
 import { Filter } from './Filter/Filter';
@@ -7,16 +7,44 @@ import {
   NotificationManager,
 } from 'react-notifications';
 import 'react-notifications/lib/notifications.css';
+import { Modal } from './Modal';
 
-export class App extends Component {
+const KEY_LOCAL_STORADGE = 'contacts';
+
+export class App extends PureComponent {
   state = {
-    contacts: [
-      { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
+    contacts: [],
     filter: '',
+    showModal: false,
+  };
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.contacts !== this.state.contacts) {
+      localStorage.setItem(
+        KEY_LOCAL_STORADGE,
+        JSON.stringify(this.state.contacts)
+      );
+    }
+  }
+
+  componentDidMount() {
+    const contactsInLS =
+      JSON.parse(localStorage.getItem(KEY_LOCAL_STORADGE)) || [];
+    this.setState({ contacts: contactsInLS });
+
+    if (contactsInLS.length === 0) {
+      setTimeout(() => {
+        this.setState({ showModal: true });
+      }, 1000);
+    }
+  }
+
+  toggleModal = () => {
+    this.setState(prevState => {
+      return {
+        showModal: !this.state.showModal,
+      };
+    });
   };
 
   handleInputFilter = evt => {
@@ -50,27 +78,45 @@ export class App extends Component {
     });
   };
 
+  loadDefaultContacts = contactsFromModal => {
+    this.setState(prevState => {
+      return { ...prevState, contacts: contactsFromModal };
+    });
+    this.toggleModal();
+  };
+
   render() {
+    const { showModal } = this.state;
+
     const filteredContacts = this.state.contacts.filter(contact =>
       contact.name.toLowerCase().includes(this.state.filter.toLowerCase())
     );
+
     return (
-      <div className="container">
-        <NotificationContainer />
-        <h1>Phonebook</h1>
-        <ContactForm onSubmitForm={this.handleSubmitForm} />
-        <h2>Contacts</h2>
-        <Filter
-          onInputFilter={this.handleInputFilter}
-          filter={this.state.filter}
-        />
-        {filteredContacts.length > 0 && (
-          <Contacts
-            contacts={filteredContacts}
-            onClickDelBtn={this.handleDeleteContact}
+      <>
+        {showModal && (
+          <Modal
+            toggleModal={this.toggleModal}
+            loadContacts={this.loadDefaultContacts}
           />
         )}
-      </div>
+        <div className="container">
+          <NotificationContainer />
+          <h1>Phonebook</h1>
+          <ContactForm onSubmitForm={this.handleSubmitForm} />
+          <h2>Contacts</h2>
+          <Filter
+            onInputFilter={this.handleInputFilter}
+            filter={this.state.filter}
+          />
+          {filteredContacts.length > 0 && (
+            <Contacts
+              contacts={filteredContacts}
+              onClickDelBtn={this.handleDeleteContact}
+            />
+          )}
+        </div>
+      </>
     );
   }
 }
